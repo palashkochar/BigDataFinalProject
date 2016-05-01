@@ -1,0 +1,14 @@
+*****Pig Script to run for determining Degree of Helpfulness*****
+
+
+reviewsHelpfulness = LOAD 'hbase://bookReview' USING org.apache.pig.backend.hadoop.hbase.HBaseStorage('cf1:asin, cf1:helpful, cf1:helpfulTotal', '-loadKey true') AS (id:chararray, asin:chararray, helpful:chararray, helpfulTotal:chararray);
+
+rHelp = FILTER reviewHelpfulnedd BY $2 > ($3)/2;
+
+rHelp1 = foreach rHelp GENERATE $0, $1, $2, $3, (($2/$3)*100);
+
+
+rHelp2 = FILTER rHelp1 BY $3 > 3;
+	
+Store rHelp2 into 'HelpfulData';
+

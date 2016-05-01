@@ -1,0 +1,26 @@
+*****Commands and Pig scripts to run for sentimental analysis*****
+
+
+hdfs dfs -put /home/hadoop/dictionary.txt dictionary.txt
+
+dictionary = load '/dictionary.txt' using PigStorage('\t')  AS (type:chararray,length:int,word:chararray,pos:chararray,stemmed:chararray,polarity:chararray);
+
+reviews = LOAD 'hbase://bookReview' USING org.apache.pig.backend.hadoop.hbase.HBaseStorage('cf1:asin, cf1:reviewText', '-loadKey true') AS (id:chararray, asin:chararray, reviewText:chararray);
+
+
+twords = foreach reviews generate id, FLATTEN( TOKENIZE(reviewText) ) AS word;
+
+tsentiment = join twords by word left outer, dictionary by word using 'replicated';
+
+wscore = foreach tsentiment generate twords::id as id, (CASE dictionary::polarity WHEN 'positive' THEN 1 WHEN 'negative' THEN -1 else 0 END) as score;
+
+tgroup = group wscore by id;
+
+tscore = foreach tgroup generate group as id, SUM(wscore.score)  as final;
+
+final1 = join tscore by id left outer, reviews by id using 'replicated';
+
+final2 = foreach final1 generate tscore::id as id, reviews::asin, tscore::final as finalscore;
+
+
+store final2 into 'final2';

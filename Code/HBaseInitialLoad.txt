@@ -1,0 +1,27 @@
+****Script to load json data into HBase*****
+
+CREATE TABLE hbase_table_bookReview(reviewerID string, asin string, reviewerName string, helpful int, helpful_total int, reviewText string, overall double, summary string, unixReviewtTime bigint, reviewTime string) 
+STORED BY 'org.apache.hadoop.hive.hbase.HBaseStorageHandler'
+WITH SERDEPROPERTIES ("hbase.columns.mapping" = ":key, cf1:asin, cf1:reviewerName, cf1:helpful, cf1:helpful_total, cf1:reviewText, cf1:overall, cf1:summary, cf1:unixReviewtTime, cf1:reviewTime")
+TBLPROPERTIES ("hbase.table.name" = "bookReview");
+
+
+
+DROP TABLE IF EXISTS staging;
+CREATE TABLE staging (json STRING);
+LOAD DATA LOCAL INPATH '/home/hadoop/reviews_Books.json' INTO TABLE staging;
+
+
+
+INSERT OVERWRITE TABLE hbase_table_bookReview SELECT
+  get_json_object(json, "$.reviewerID") AS reviewerID,
+  get_json_object(json, "$.asin") AS asin,
+  get_json_object(json, "$.reviewerName") AS reviewerName,
+  get_json_object(json, "$.helpful[0]") AS helpful,
+  get_json_object(json, "$.helpful[1]") AS helpful_total,
+  get_json_object(json, "$.reviewText") AS reviewText,
+  get_json_object(json, "$.overall") AS overall,
+  get_json_object(json, "$.summary") AS summary,
+  get_json_object(json, "$.unixReviewTime") AS unixReviewtTime,
+  get_json_object(json, "$.reviewTime") AS reviewTime
+FROM staging where get_json_object(json, "$.reviewerID") is not null;
